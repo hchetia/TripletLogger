@@ -2,7 +2,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # TRIPLET LOGGER v1.0 — R implementation
 # Alignment-free estimation of CAG or CTG repeats from targeted amplicon short-read  (MiSeq) or long-read (Nanopore) sequencing data.
-#
+# Github page- https://github.com/hchetia/TripletLogger
 # Miseq-appropriate defaults:
 #   - Raw frequency range (default 1–120 repeats) 
 #   - Threshold metrics: config-specific 'base threshold' (CAG: >=35; CTG: >=50),
