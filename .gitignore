@@ -1,9 +1,15 @@
+# R session artifacts
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
-.Rprofile
-_1.md
-.gitignore
-.Rproj
-.zip
+
+# renv: ignore the local library/cache, but DO track
+# .Rprofile, renv.lock, renv/activate.R and renv/settings.json
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
