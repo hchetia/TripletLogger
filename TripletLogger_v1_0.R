@@ -37,7 +37,7 @@
 # Length-adaptive Type A threshold (Fix G):
 #   effective_max_type_a = max(max_type_a, floor(n_triplets * type_a_rate))
 #
-# Dependencies: ShortRead, Biostrings, dplyr, optparse.
+# Dependencies: ShortRead, Biostrings, optparse.
 # ═════════════════════════════════════════════════════════════════════
 
 VERSION <- "1.0"
@@ -46,7 +46,6 @@ VERSION <- "1.0"
 suppressPackageStartupMessages({
  library(ShortRead)
  library(Biostrings)
- library(dplyr)
  library(optparse)
 })
 
