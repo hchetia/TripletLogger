@@ -50,6 +50,24 @@ suppressPackageStartupMessages({
  library(optparse)
 })
 
+# ── Summary-histogram module (sourced; defines plot_repeat_histogram) ─────────
+# Expected next to this script. When sourced, the module only defines the
+# plotting function — its CLI block is guarded by sys.nframe() == 0.
+if (!exists("plot_repeat_histogram", mode = "function")) {
+ .tl_dir <- tryCatch({
+  .args <- commandArgs(FALSE)
+  .file <- sub("^--file=", "", grep("^--file=", .args, value = TRUE))
+  if (length(.file)) dirname(normalizePath(.file[1])) else getwd()
+ }, error = function(e) getwd())
+ .tl_hist <- file.path(.tl_dir, "TripletLogger_histogram.R")
+ if (file.exists(.tl_hist)) {
+  source(.tl_hist)
+ } else {
+  warning("TripletLogger_histogram.R not found next to the script; ",
+          "histogram output (histo = ON) will be skipped.")
+ }
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # TRIPLET-TYPE CONFIGURATION
 # ══════════════════════════════════════════════════════════════════════════════
@@ -437,6 +455,12 @@ process_fastq_file <- function(fastq_path,
                                freq_range_min    = 1L,
                                freq_range_max    = 1000L,
                                read_type         = "long",
+                               histo             = "ON",
+                               histo_freq_min    = 0L,
+                               histo_freq_max    = NA,
+                               histo_reads_min   = 0L,
+                               histo_reads_max   = 1000L,
+                               histo_format      = "png",
                                output_dir        = ".") {
  
  if (is.null(max_type_b)) max_type_b <- config$default_max_type_b
@@ -667,6 +691,15 @@ process_fastq_file <- function(fastq_path,
   stringsAsFactors           = FALSE
  )
  
+ # ── Percentage of Q-passed reads rejected by the error thresholds ────────
+ pct_threshold_rejected <- if (reads_passing > 0L) {
+  (threshold_rejected / reads_passing) * 100
+ } else {
+  NA_real_
+ }
+ metrics_df[["PCT.of.ErrorThreshold.Rejected.Reads"]] <-
+  ifelse(is.na(pct_threshold_rejected), NA, round(pct_threshold_rejected, 2))
+ 
  # ── Add config- and readtype-specific threshold columns ─────────────────
  # Reads dropped by library-prep subtraction (0 for CAG)
  metrics_df[["Reads_Dropped_By_Adjustment"]] <- reads_dropped_adj
@@ -702,7 +735,7 @@ process_fastq_file <- function(fastq_path,
                                                     allele_df$Proportion[2], NA)
  
  # ── File tag includes read_type suffix ───────────────────────────────────
- file_tag <- paste0(triplet_label, "TRIPLETLogger.v", VERSION, ".", read_type)
+ file_tag <- paste0(triplet_label, "_TRIPLETLogger.v", VERSION, ".", read_type)
  
  metrics_csv    <- file.path(output_dir,
                              paste0(base_name, "_", file_tag, "_RepeatMetrics.csv"))
@@ -711,6 +744,47 @@ process_fastq_file <- function(fastq_path,
  
  write.csv(metrics_df,  metrics_csv,   row.names = FALSE)
  write.csv(raw_freq,    raw_freq_csv,  row.names = FALSE)
+ 
+ # ── Summary histogram (histo = ON/OFF) ───────────────────────────────────
+ if (toupper(histo) == "ON") {
+  if (exists("plot_repeat_histogram", mode = "function")) {
+   histo_fmt <- tolower(histo_format)
+   if (!histo_fmt %in% c("png", "svg")) {
+    warning("histo_format must be 'png' or 'svg'; defaulting to 'png'.")
+    histo_fmt <- "png"
+   }
+   histo_file <- file.path(output_dir,
+                           paste0(base_name, "_", file_tag,
+                                  "_Histogram.", histo_fmt))
+   pct_over_110_val <- metrics_df[[col_pct_110]][1]
+   histo_subtitle   <- sprintf("%s | %s | Pct.Reads.over.110: %s",
+                               triplet_label, read_type,
+                               ifelse(is.na(pct_over_110_val), "NA",
+                                      format(pct_over_110_val)))
+   tryCatch({
+    plot_repeat_histogram(
+     freq_df      = raw_freq,
+     allele1_peak = metrics_df$Estimated_Allele_1_Peak[1],
+     allele2_peak = metrics_df$Estimated_Allele_2_Peak[1],
+     freq_min     = histo_freq_min,
+     freq_max     = histo_freq_max,
+     reads_min    = histo_reads_min,
+     reads_max    = histo_reads_max,
+     format       = histo_fmt,
+     out_file     = histo_file,
+     sample_id    = sample_id,
+     subtitle     = histo_subtitle
+    )
+    message(sprintf("[%s] Summary histogram written to: %s",
+                    sample_id, histo_file))
+   }, error = function(e) {
+    warning(sprintf("[%s] Histogram generation failed: %s",
+                    sample_id, conditionMessage(e)))
+   })
+  } else {
+   warning("plot_repeat_histogram() unavailable; histogram skipped.")
+  }
+ }
  
  # ── Write rejected match sizes (always written, even if 0 rejected) ─────
  rej_csv <- file.path(output_dir,
@@ -816,6 +890,24 @@ option_list <- list(
  make_option(c("--freqRangeMax"), type = "integer", default = 1000L,
              help = "Maximum repeat length for raw frequency table [default: 1000; short reads capped at 120]",
              metavar = "INT"),
+ make_option(c("--histo"), type = "character", default = "ON",
+             help = "Generate summary histogram: ON or OFF [default: ON]",
+             metavar = "ON/OFF"),
+ make_option(c("--histoFreqMin"), type = "double", default = 0,
+             help = "Histogram x-axis minimum repeat length [default: 0]",
+             metavar = "INT"),
+ make_option(c("--histoFreqMax"), type = "double", default = NA,
+             help = "Histogram x-axis maximum repeat length [default: auto]",
+             metavar = "INT"),
+ make_option(c("--histoReadsMin"), type = "double", default = 0,
+             help = "Histogram y-axis minimum read count [default: 0]",
+             metavar = "INT"),
+ make_option(c("--histoReadsMax"), type = "double", default = 1000,
+             help = "Histogram y-axis maximum read count [default: 1000]",
+             metavar = "INT"),
+ make_option(c("--histoFormat"), type = "character", default = "png",
+             help = "Histogram image format: png or svg [default: png]",
+             metavar = "FORMAT"),
  make_option(c("-s", "--sampleId"), type = "character", default = NULL,
              help = "Sample ID override [default: derived from filename]",
              metavar = "STRING")
@@ -825,8 +917,8 @@ parser <- OptionParser(
  usage       = "usage: %prog -i <input.fastq.gz> [options]",
  option_list = option_list,
  description = paste0(
-  "Triplet Logger (Long Read) v", VERSION,
-  " — Alignment-free estimation of CAG/CTG repeats from long-read (ONT) amplicon data.")
+  "Triplet Logger v", VERSION,
+  " — Alignment-free estimation of CAG/CTG repeats from short (MiSeq) and long-read (ONT) amplicon data.")
 )
 
 # Only parse when run from the command line (not when source()'d)
@@ -848,6 +940,15 @@ if (!interactive()) {
  read_type <- tolower(opts$readType)
  if (!read_type %in% c("long", "short")) {
   stop("Error: --readType must be long or short.", call. = FALSE)
+ }
+ 
+ # Validate histogram options
+ histo_opt <- toupper(opts$histo)
+ if (!histo_opt %in% c("ON", "OFF")) {
+  stop("Error: --histo must be ON or OFF.", call. = FALSE)
+ }
+ if (!tolower(opts$histoFormat) %in% c("png", "svg")) {
+  stop("Error: --histoFormat must be png or svg.", call. = FALSE)
  }
  
  config <- get_triplet_config(triplet_type)
@@ -888,6 +989,12 @@ if (!interactive()) {
   freq_range_min    = opts$freqRangeMin,
   freq_range_max    = opts$freqRangeMax,
   read_type         = read_type,
+  histo             = histo_opt,
+  histo_freq_min    = opts$histoFreqMin,
+  histo_freq_max    = opts$histoFreqMax,
+  histo_reads_min   = opts$histoReadsMin,
+  histo_reads_max   = opts$histoReadsMax,
+  histo_format      = opts$histoFormat,
   output_dir        = opts$output
  )
  
