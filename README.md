@@ -35,23 +35,42 @@ BiocManager::install(c("ShortRead", "Biostrings"))
 Alternatively, restore the exact pinned environment with renv (see below).
 
 ## Reproducible environment (renv)
-
-The repository ships an [`renv`](https://rstudio.github.io/renv/) lockfile that pins the exact CRAN and Bioconductor package versions (and the R version) used for the analysis, so the environment can be reproduced precisely.
-
-From the repository root:
-
+ 
+R packages get updated over time, and a script that runs perfectly today can behave differently — or stop working — once one of the packages it relies on changes. To prevent that, this repository includes a file called `renv.lock`. Think of it as a recipe card that records the *exact* version of every R package (and the version of R itself) that TripletLogger was built and tested with.
+ 
+The [renv](https://rstudio.github.io/renv/) package can read that recipe and install the matching versions on your computer, so the tool works the same way for you as it does for us. You only need to set this up **once**.
+ 
+**Step 1 — Get the code and find its folder.**
+Download or clone this repository. The folder it ends up in is your "project folder" — it's the one containing `renv.lock` and the `TripletLogger_v1_0.R` script.
+ 
+**Step 2 — Open R *inside* that folder.**
+This part matters: renv only works when R is started from the project folder. The easiest way is to double-click the `TripletLogger.Rproj` file, which opens RStudio already pointed at the right place. (If you use a terminal instead, `cd` into the folder first, then start R.)
+ 
+**Step 3 — Install renv (skip if you already have it).**
+ 
 ```r
-install.packages("renv")   # only if renv is not already available
-renv::restore()            # installs the pinned packages into a project-local library
+install.packages("renv")
 ```
-
-`renv::restore()` reads `renv.lock` and installs the recorded packages into a project-local library. The `.Rprofile` in the repository root activates this library automatically when R is started from the project directory, so no further setup is required. To confirm the environment matches the lockfile:
-
+ 
+**Step 4 — Install the recorded packages.**
+ 
 ```r
-renv::status()             # should report the project is in a consistent state
+renv::restore()
 ```
-
-If you prefer not to use renv, the manual install in [Requirements](#requirements) reproduces the same package set, though without version pinning.
+ 
+This downloads the correct version of each package into a private library that belongs to this project only — it won't change or interfere with the packages you use for other R work. The first run can take a few minutes; if it asks you to confirm, type `y` and press Enter.
+ 
+That's the whole setup. From now on, every time you open R from this folder, renv automatically loads the right packages for you (a small hidden `.Rprofile` file in the folder handles this), so you can just run TripletLogger as shown in [Usage](#usage) below.
+ 
+To double-check it worked, run:
+ 
+```r
+renv::status()
+```
+ 
+If it says the project is "in a consistent state," everything matches the recipe and you're good to go.
+ 
+**Don't want to use renv?** That's fine — you can skip all of the above and simply install the packages yourself with the commands in [Requirements](#requirements). The tool will run exactly the same way; you just won't have the versions locked down, so a future package update could, in principle, change its behavior.
 
 ## Usage
 
