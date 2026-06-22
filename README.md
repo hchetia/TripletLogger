@@ -21,12 +21,12 @@ TripletLogger scans FASTQ reads directly with an N-aware regular expression, cou
 
 - R ≥ 4.0
 - Bioconductor: `ShortRead`, `Biostrings`
-- CRAN: `dplyr`, `optparse`, `tictoc`
+- CRAN: `dplyr`, `optparse`, `tictoc`, `ggplot2`
 
 Install:
 
 ```r
-install.packages(c("dplyr", "optparse", "tictoc"))
+install.packages(c("dplyr", "optparse", "tictoc", "ggplot2"))
 if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
 BiocManager::install(c("ShortRead", "Biostrings"))
 ```
@@ -84,10 +84,10 @@ Rscript TripletLogger_v1_0.R -i sample02.fastq.gz -o results/ -t CTG -r short
 
 For each input FASTQ, TripletLogger writes three CSVs to the output directory:
 
-- `<sample>_<TYPE>TRIPLETLogger.v1.0.<readtype>_RepeatMetrics.csv` — summary metrics and estimated allele call(s).
-- `<sample>_<TYPE>TRIPLETLogger.v1.0.<readtype>_NumReadsPerRepeat.csv` — raw repeat-length frequency distribution.
-- `<sample>_<TYPE>TRIPLETLogger.v1.0.<readtype>_ThresholdRejected.csv` — sizes of matches rejected by error thresholds.
-
+- `<sample>_<TYPE>_TRIPLETLogger.v1.0.<readtype>_RepeatMetrics.csv` — summary metrics and estimated allele call(s).
+- `<sample>_<TYPE>_TRIPLETLogger.v1.0.<readtype>_NumReadsPerRepeat.csv` — raw repeat-length frequency distribution.
+- `<sample>_<TYPE>_TRIPLETLogger.v1.0.<readtype>_ThresholdRejected.csv` — repeat sizes of matches rejected by error thresholds.
+- `<sample>_<TYPE>_TRIPLETLogger.v1.0.<readtype>_Histogram.png` - Histogram of the repeats and their respective read counts
 
 ## Version
 v1.0
