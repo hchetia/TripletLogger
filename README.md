@@ -69,7 +69,112 @@ renv::status()
 ```
  
 If it says the project is "in a consistent state," everything matches the recipe and you're good to go.
- 
+
+ <details><summary><b>If you are a Mac User running into compilation errors, click here</b></summary>
+# Renv Users for Mac
+
+If you are setting up this project on macOS and running `renv::restore()` after opening the `.Rproj` file, you may encounter a compilation error related to missing C++ headers. This guide walks through the expected error and how to fix it.
+
+---
+
+## Expected Error
+
+After running `renv::restore()`, you may see an error like this:
+
+```
+Error: Error installing package 'Rcpp':
+================================
+* installing *source* package 'Rcpp' ...
+** libs
+using C++ compiler: 'Apple clang version 21.0.0 (clang-2100.1.1.101)'
+using SDK: 'MacOSX26.5.sdk'
+clang++ -arch x86_64 -std=gnu++17 ...
+In file included from api.cpp:26:
+In file included from ../inst/include/Rcpp.h:27:
+In file included from ../inst/include/RcppCommon.h:30:
+In file included from ../inst/include/Rcpp/r/headers.h:67:
+../inst/include/Rcpp/platform/compiler.h:37:10: fatal error: 'cmath' file not found
+   37 | #include <cmath>
+      |          ^~~~~~~
+1 error generated.
+make: *** [api.o] Error 1
+ERROR: compilation failed for package 'Rcpp'
+```
+
+## What Is Most Likely Causing This
+
+This is a **macOS SDK / Xcode Command Line Tools (CLT) misconfiguration** — not a problem with R or renv. The C++ standard library header `<cmath>` lives inside the macOS SDK, and clang cannot resolve the path to it. This commonly happens after a major macOS upgrade where the CLTs are not fully re-initialised.
+
+---
+
+## Fix
+
+Work through the steps below in order, stopping once `renv::restore()` succeeds.
+
+### Step 1 — Reinstall Command Line Tools
+
+Open **Terminal** and run:
+
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+xcode-select --install
+```
+
+A GUI prompt will appear — follow it to complete the installation (this takes a few minutes). Afterwards, confirm it worked:
+
+```bash
+xcode-select -p        # should return a path to the CLTs
+xcrun --show-sdk-path  # should return a valid SDK path, e.g. .../MacOSX26.sdk
+```
+
+### Step 2 — Verify C++ Headers Are Reachable
+
+Run this quick smoke test in Terminal:
+
+```bash
+echo '#include <cmath>
+int main(){ return 0; }' | clang++ -x c++ -
+```
+
+If this compiles silently with no errors, the system is fixed. If it still fails, continue to Step 3.
+
+### Step 3 — Set `SDKROOT` Explicitly for R
+
+R's build environment sometimes does not inherit the correct `SDKROOT` after a major macOS upgrade. Set it permanently in `~/.R/Makevars`:
+
+```bash
+mkdir -p ~/.R
+echo "SDKROOT=$(xcrun --show-sdk-path)" >> ~/.R/Makevars
+```
+
+Verify the file looks correct:
+
+```bash
+cat ~/.R/Makevars
+# Expected output (path may differ by macOS version):
+# SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk
+```
+
+### Step 4 — Retry the Restore
+
+Back in RStudio, restart your R session first:
+
+- **Session → Restart R** (or `Cmd + Shift + F10`)
+
+Then run:
+
+```r
+renv::restore()
+```
+
+This should now complete successfully.
+
+---
+
+## Note for Apple Silicon (M-series) Users
+
+If you are on an M1/M2/M3/M4 Mac, check which build of R you have installed. Compiling with `-arch x86_64` means you are either on Intel or running the x86_64 R build under Rosetta 2. Installing the **native ARM64 build of R** from [mac.r-project.org](https://mac.r-project.org) is recommended — it avoids a broader class of Rosetta-related compilation issues and runs significantly faster. This is not the cause of the `cmath` error, but is worth addressing to prevent other issues down the line.
+ </details>
 **Don't want to use renv?** That's fine — you can skip all of the above and simply install the packages yourself with the commands in [Requirements](#requirements). The tool will run exactly the same way; you just won't have the versions locked down, so a future package update could, in principle, change its behavior.
 
 ## Usage
