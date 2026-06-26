@@ -11,6 +11,7 @@ TripletLogger scans FASTQ reads directly with an N-aware regular expression, cou
 ## Features
 
 - Supports both **CAG** and **CTG** repeats with triplet-specific logic (regex, counting rule, flank trimming, Type B handling).
+- Successfully tested on both **CAG** and **CTG** repeats from human _HTT_ exon1 and _ATXN3_ exon10 targeted sequencing data.
 - Works on **short reads** (MiSeq) and **long reads** (ONT) via a single `--readType` switch with sensible defaults for each.
 - Tolerates sequencing errors through configurable **Type A** (total non-target) and **Type B** (consecutive non-target) thresholds, with a length-adaptive Type A floor.
 - Trims absorbed downstream flank tracts (CCG-like for CAG, CGG-like for CTG).
