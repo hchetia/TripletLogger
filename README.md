@@ -178,6 +178,45 @@ If you are on an M1/M2/M3/M4 Mac, check which build of R you have installed. Com
  </details>
 **Don't want to use renv?** That's fine — you can skip all of the above and simply install the packages yourself with the commands in [Requirements](#requirements). The tool will run exactly the same way; you just won't have the versions locked down, so a future package update could, in principle, change its behavior.
 
+## Running from the R console (interactive session)
+ 
+The `Rscript` command above is the normal way to run TripletLogger. If you would rather work inside an interactive R session — the R console or RStudio — you must **load the script's functions first** with `source()`. Calling a function such as `process_fastq_file()` directly, without sourcing the script, produces:
+ 
+```
+Error: could not find function "process_fastq_file"
+```
+ 
+This happens because the functions only exist once the script is sourced. The command-line block at the bottom of the script is intentionally skipped in an interactive session (it is guarded by `if (!interactive())`), so sourcing the script does **not** trigger the "`--input` is required" error — it simply makes every function available to you.
+ 
+**Step 1 — Set the working directory to the project folder** (the folder containing `TripletLogger_v1_0.R` and `TripletLogger_histogram.R`). This matters: in an interactive session the script sources the histogram module from the working directory, so the histogram is only generated when R is started in — or pointed at — the project folder.
+ 
+```r
+setwd("/path/to/TripletLogger")
+```
+ 
+**Step 2 — Load the functions.**
+ 
+```r
+source("TripletLogger_v1_0.R")
+```
+ 
+**Step 3 — Build the triplet configuration.** On the command line the `-t`/`--tripletType` flag does this for you. In the console you build it yourself and pass it to `process_fastq_file()` as the `config` argument, which has no default:
+ 
+```r
+config <- get_triplet_config("CAG")   # or "CTG"
+```
+ 
+**Step 4 — Run the tool.** Every other argument has the same default as the corresponding command-line flag, so you only set the ones you want to change:
+ 
+```r
+process_fastq_file(
+  fastq_path = "sample01.fastq.gz",
+  config     = config,
+  read_type  = "short",      # "long" (ONT, the default) or "short" (MiSeq)
+  output_dir = "results"
+)
+```
+
 ## Usage
 
 ```bash
