@@ -71,14 +71,12 @@ renv::status()
  
 If it says the project is "in a consistent state," everything matches the recipe and you're good to go.
 
- <details><summary><b>If you are a Mac User running into compilation errors, click here</b></summary>
-# Renv Users for Mac
-
+ <details><summary><b>If you are a Macintosh user running into compilation errors, click here</b></summary>
 If you are setting up this project on macOS and running `renv::restore()` after opening the `.Rproj` file, you may encounter a compilation error related to missing C++ headers. This guide walks through the expected error and how to fix it.
 
 ---
 
-## Expected Error
+### Expected Error
 
 After running `renv::restore()`, you may see an error like this:
 
@@ -102,17 +100,17 @@ make: *** [api.o] Error 1
 ERROR: compilation failed for package 'Rcpp'
 ```
 
-## What Is Most Likely Causing This
+### What Is Most Likely Causing This
 
 This is a **macOS SDK / Xcode Command Line Tools (CLT) misconfiguration** — not a problem with R or renv. The C++ standard library header `<cmath>` lives inside the macOS SDK, and clang cannot resolve the path to it. This commonly happens after a major macOS upgrade where the CLTs are not fully re-initialised.
 
 ---
 
-## Fix
+### Fix
 
 Work through the steps below in order, stopping once `renv::restore()` succeeds.
 
-### Step 1 — Reinstall Command Line Tools
+#### Step 1 — Reinstall Command Line Tools
 
 Open **Terminal** and run:
 
@@ -128,7 +126,7 @@ xcode-select -p        # should return a path to the CLTs
 xcrun --show-sdk-path  # should return a valid SDK path, e.g. .../MacOSX26.sdk
 ```
 
-### Step 2 — Verify C++ Headers Are Reachable
+#### Step 2 — Verify C++ Headers Are Reachable
 
 Run this quick smoke test in Terminal:
 
@@ -139,7 +137,7 @@ int main(){ return 0; }' | clang++ -x c++ -
 
 If this compiles silently with no errors, the system is fixed. If it still fails, continue to Step 3.
 
-### Step 3 — Set `SDKROOT` Explicitly for R
+#### Step 3 — Set `SDKROOT` Explicitly for R
 
 R's build environment sometimes does not inherit the correct `SDKROOT` after a major macOS upgrade. Set it permanently in `~/.R/Makevars`:
 
@@ -156,7 +154,7 @@ cat ~/.R/Makevars
 # SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk
 ```
 
-### Step 4 — Retry the Restore
+#### Step 4 — Retry the Restore
 
 Back in RStudio, restart your R session first:
 
@@ -172,13 +170,194 @@ This should now complete successfully.
 
 ---
 
-## Note for Apple Silicon (M-series) Users
+### Note for Apple Silicon (M-series) Users
 
 If you are on an M1/M2/M3/M4 Mac, check which build of R you have installed. Compiling with `-arch x86_64` means you are either on Intel or running the x86_64 R build under Rosetta 2. Installing the **native ARM64 build of R** from [mac.r-project.org](https://mac.r-project.org) is recommended — it avoids a broader class of Rosetta-related compilation issues and runs significantly faster. This is not the cause of the `cmath` error, but is worth addressing to prevent other issues down the line.
  </details>
-**Don't want to use renv?** That's fine — you can skip all of the above and simply install the packages yourself with the commands in [Requirements](#requirements). The tool will run exactly the same way; you just won't have the versions locked down, so a future package update could, in principle, change its behavior.
 
-## Running from the R console (interactive session)
+---
+
+<details><summary><b>Reproducing the renv if you are a Windows OS user </b></summary>
+ 
+These steps rebuild the exact set of R packages TripletLogger needs, using the
+`renv.lock` file included in this repository. Work through them **in order**.
+After each step there's a **✓ Check** describing what success looks like — don't
+move on until you see it. If a step fails, jump to **Troubleshooting** at the
+bottom and find the matching symptom.
+
+You'll need permission to install software on the PC.
+
+---
+
+### 1. Install the prerequisites
+
+Install these three, in this order:
+
+1. **R 4.4.x** (not the newest release). The lockfile targets Bioconductor 3.20, which pairs with R 4.4.
+ - Go to <https://cran.r-project.org/bin/windows/base/>. If the top link is a 4.4.x version, use it. If it's newer (4.5+), click **Previous releases** and
+pick the latest **4.4.x**. Run the installer with all defaults.
+2. **Rtools44** — the compiler toolkit some packages need.
+- Download and run the installer from
+<https://cran.r-project.org/bin/windows/Rtools/rtools44/>. Accept all defaults.
+3. **RStudio** — the window you'll type commands into.
+- Download and run from <https://posit.co/download/rstudio-desktop/>.
+✓ **Check:** the Start menu lists **R x64 4.4.x** and **RStudio**.
+
+---
+
+### 2. Get the project and open it in RStudio
+
+1. On this repository's GitHub page, click the green **Code** button →
+**Download ZIP**.
+2. Right-click the ZIP → **Extract All**. Put it somewhere simple, e.g.
+`C:\Users\<you>\Documents\`.
+3. In RStudio: **File → Open Project…** and open the project folder. If the repo
+contains a `.Rproj` file, open that. If it doesn't, instead run this in the Console (use **your** path, with forward slashes):
+
+```r
+setwd("C:/Users/<you>/Documents/TripletLogger-main/TripletLogger-main")
+```
+✓ **Check:** when the project loads, the Console prints a line mentioning **renv** (e.g. *"Project ... loaded. [renv ...]"*). If it offers to install
+renv, allow it.
+
+**This matters:** every command below must be run with this project open. renv keeps packages in a *project-local* library, so commands like `library(...)` only see the project's packages when the project is active.
+
+---
+ 
+ ### 3. Recreate the environment
+ 
+ Run one command in the Console:
+ 
+ ```r
+renv::restore()
+```
+
+If it asks *"Do you want to proceed?"*, type `y` and press Enter. This downloads
+and installs everything in `renv.lock` and can take several minutes. Let it finish.
+
+✓ **Check:** it ends **without** a red `Error:` line. If you got an error, go to
+**Troubleshooting**.
+
+**Golden rule:** never fix a missing package with `install.packages(...)` while this project is open. Always use `renv::restore()` or `renv::install(...)`. Mixing the two is the most common way this setup breaks.
+
+---
+ 
+ ### 4. Confirm it worked
+ 
+ With the project still open, run:
+ 
+ ```r
+renv::status()
+library(ShortRead)
+```
+
+✓ **Check:**
+ - `renv::status()` reports the project is **consistent / in sync** (no long list of mismatches).
+- `library(ShortRead)` loads with **no error** (startup messages are normal).
+
+If `library(ShortRead)` says *"there is no package called 'ShortRead'"*, you are
+almost certainly not in the project — see Troubleshooting **C**.
+
+---
+ 
+ ### 5. Run TripletLogger (from a terminal, not the R Console)
+ 
+ The program is launched from a Windows terminal. Typing `Rscript ...` into the R
+Console gives an `unexpected symbol` error — that's the wrong place.
+
+1. In RStudio, click the **Terminal** tab (next to **Console**), or open **Command Prompt** from the Start menu.
+2. Move into the project folder and run it (adjust the input file name):
+
+```bash
+cd C:\Users\<you>\Documents\TripletLogger-main\TripletLogger-main
+Rscript TripletLogger_v1_0.R -i your_reads.fastq -o results/ -t CAG -r short
+```
+
+If Windows says **`Rscript` is not recognized**, use the full path: 
+For example, if your R version is 4.4.2, do
+```bash
+"C:\Program Files\R\R-4.4.2\bin\Rscript.exe" TripletLogger_v1_0.R -i your_reads.fastq -o results/ -t CAG -r short
+```
+
+✓ **Check:** a `results/` folder appears with output files in it.
+
+---
+
+### Troubleshooting
+
+Find your symptom below.
+
+#### A. `restore()` stops with a download error on a Bioconductor package
+*Example: it fails on `BiocParallel`, and packages that depend on it
+(`Rsamtools`, `GenomicAlignments`, `ShortRead`) then report "dependency failed".*
+
+**Cause:** the lockfile pins a Bioconductor package to a patch version that the
+Bioconductor 3.20 server no longer hosts, so the download 404s and `restore()`
+stops.
+
+**Fix:** install that one package through renv (which fetches the version
+currently available), update the lockfile to match, then finish the restore.
+Replace `BiocParallel` with whatever package name appeared in the error:
+
+```r
+renv::install("bioc::BiocParallel")   # the package named in the error
+renv::snapshot()                       # type y when prompted — updates renv.lock
+renv::restore()                        # installs the remaining packages
+```
+
+Repeat for any other Bioconductor package that fails the same way. After this,
+`renv::status()` should report the project in sync.
+
+This deliberately updates `renv.lock` to the versions that actually installed.
+That's the right trade-off for getting it running; it means your environment may differ by a patch version from the original lockfile.
+
+#### B. Errors mentioning *"compilation failed"* or *"package not available"* during install
+**Cause:** a package had to be built from source and the compiler toolkit
+(Rtools44) is missing or not detected.
+
+**Fix:**
+ 1. Re-run the **Rtools44** installer from Step 1, accept defaults, then fully
+close and reopen RStudio (so it picks up the toolchain).
+2. Re-run `renv::restore()`.
+3. (Optional check) if you have the `pkgbuild` package, you can confirm the
+toolchain is visible to R with:
+ ```r
+pkgbuild::has_build_tools(debug = TRUE)
+```
+A result of `TRUE` means the compiler is set up correctly. (Don't rely on
+   searching for `make` on the PATH — R can find Rtools without it, so that test
+   can report a false problem.)
+
+#### C. `library(...)` says *"there is no package called ..."* even though install succeeded
+**Cause:** you're running in a plain R session, not inside the TripletLogger project, so R is looking in the wrong (system) library.
+**Fix:** reopen the project (**File → Open Project…**, or rerun the `setwd(...)` from Step 2) and confirm the Console shows the **renv** activation line, then try again. Everything must be run with the project active.
+
+#### D. `Rscript TripletLogger_v1_0.R ...` gives *"unexpected symbol"*
+**Cause:** you typed a terminal command at the R Console `>` prompt.
+**Fix:** run it in the **Terminal** tab or Command Prompt instead — see Step 5.
+
+#### E. A warning that renv X.Y.Z was loaded but the project records a different version
+*Example: "renv 1.2.3 was loaded ... project is configured to use renv 1.1.6".*
+**Cause:** harmless version drift between your installed renv and the one recorded in the lockfile.
+**Fix:** safe to ignore. To silence it, record the version you actually have:
+```r
+renv::record(paste0("renv@", as.character(packageVersion("renv"))))
+```
+
+### Three rules to remember
+1. **Match the R version** to the project (R 4.4.x here) — don't grab the newest.
+2. **Inside the renv project, use only `renv::restore()` / `renv::install()`** —
+   never `install.packages()`.
+3. **Run the tool from a terminal, not the R Console.**
+
+---
+</details>
+
+
+## Don't want to use renv?
+That's fine — you can skip all of the above and simply install the packages yourself with the commands in [Requirements](## Requirements). The tool will run exactly the same way; you just won't have the versions locked down, so a future package update could, in principle, change its behavior.
+
+## Running Triplet Logger interactively in RStudio
  
 The `Rscript` command above is the normal way to run TripletLogger. If you would rather work inside an interactive R session — the R console or RStudio — you must **load the script's functions first** with `source()`. Calling a function such as `process_fastq_file()` directly, without sourcing the script, produces:
  
