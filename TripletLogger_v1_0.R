@@ -368,8 +368,9 @@ call_alleles <- function(repeat_lengths, frequencies, bw = 1.5) {
                     Call = "no_peaks", stringsAsFactors = FALSE))
  }
  
+ # ── Order candidate peaks by density, snap to nearest modal repeat length ──
  ord    <- order(peak_y, decreasing = TRUE)
- peak_x <- peak_x[ord][seq_len(min(2, length(ord)))]
+ peak_x <- peak_x[ord]
  # Snap each KDE peak to the nearest observed modal repeat length
  peak_x <- vapply(peak_x, function(px) {
   in_window <- abs(repeat_lengths - px) <= bw
@@ -379,7 +380,25 @@ call_alleles <- function(repeat_lengths, frequencies, bw = 1.5) {
    round(px)
   }
  }, numeric(1))
- peak_x <- sort(unique(as.integer(peak_x)))
+ peak_x <- as.integer(peak_x)
+ 
+ # ── Minimum reportable allele value ──────────────────────────────────────
+ # Drop sub-threshold peaks (e.g. primer/artifact spikes at very low repeat
+ # lengths) from the FULL candidate list *before* the top-2 selection, so a
+ # genuine allele takes the freed slot instead of being crowded out by an
+ # artifact peak that would only be discarded afterwards.
+ MIN_ALLELE_REPEAT <- 5L
+ peak_x <- peak_x[peak_x >= MIN_ALLELE_REPEAT]
+ if (length(peak_x) == 0L) {
+  return(data.frame(Allele = NA, Peak_Repeat = NA, Proportion = NA,
+                    Call = "no_peaks", stringsAsFactors = FALSE))
+ }
+ 
+ # Keep the two highest-density survivors (peak_x is still in density order),
+ # collapsing duplicate snapped values, then present sorted by repeat length.
+ peak_x <- peak_x[!duplicated(peak_x)]
+ peak_x <- peak_x[seq_len(min(2L, length(peak_x)))]
+ peak_x <- sort(peak_x)
  
  assignments <- vapply(obs, function(o) peak_x[which.min(abs(o - peak_x))],
                        numeric(1))
@@ -458,7 +477,7 @@ process_fastq_file <- function(fastq_path,
                                histo_freq_min    = 0L,
                                histo_freq_max    = NA,
                                histo_reads_min   = 0L,
-                               histo_reads_max   = 1000L,
+                               histo_reads_max   = "auto",
                                histo_format      = "png",
                                output_dir        = ".") {
  
@@ -768,7 +787,8 @@ process_fastq_file <- function(fastq_path,
      freq_min     = histo_freq_min,
      freq_max     = histo_freq_max,
      reads_min    = histo_reads_min,
-     reads_max    = histo_reads_max,
+     reads_max    = histo_reads_max,   # number, or "auto" to scale to the expansion peak
+     reads_thresh = base_threshold,    # 35 (CAG) / 50 (CTG) -> drives auto y-scaling
      format       = histo_fmt,
      out_file     = histo_file,
      sample_id    = sample_id,
@@ -901,9 +921,9 @@ option_list <- list(
  make_option(c("--histoReadsMin"), type = "double", default = 0,
              help = "Histogram y-axis minimum read count [default: 0]",
              metavar = "INT"),
- make_option(c("--histoReadsMax"), type = "double", default = 1000,
-             help = "Histogram y-axis maximum read count [default: 1000]",
-             metavar = "INT"),
+ make_option(c("--histoReadsMax"), type = "character", default = "auto",
+             help = "Histogram y-axis max: a number, or 'auto' to scale to the >=threshold read count [default: auto]",
+             metavar = "INT|auto"),
  make_option(c("--histoFormat"), type = "character", default = "png",
              help = "Histogram image format: png or svg [default: png]",
              metavar = "FORMAT"),
