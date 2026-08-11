@@ -7,7 +7,10 @@ Github page- https://github.com/hchetia/TripletLogger
 TripletLogger scans FASTQ reads directly with an N-aware regular expression, counts pure target triplets within each accepted match, and reports per-read repeat lengths, a raw repeat-length frequency table, summary metrics, and an estimated allele call (kernel-density peak picking). No alignment to a reference is required.
 
 ---
+## If you find the tool useful, please consider citing us:
+Chetia, H., Kus, L., Sipos, E., Heintz, N. and Mätlik, K. (2026), Expanded ATXN3 CAG Repeat is Stable in Human Purkinje Cells. Mov Disord. https://doi.org/10.1002/mds.70465
 
+---
 ## Features
 
 - Supports both **CAG** and **CTG** repeats with triplet-specific logic (regex, counting rule, flank trimming, Type B handling).
